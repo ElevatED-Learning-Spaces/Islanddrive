@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* IslandDrive tokens — sea, sand and a sunset accent. */
+@theme {
+  --color-sea-50: #effcf9;
+  --color-sea-100: #c9f2ea;
+  --color-sea-500: #0f9b8e;
+  --color-sea-600: #0c7f75;
+  --color-sea-700: #0b665e;
+  --color-ink: #0f2430;
+  --color-ink-soft: #4a5d68;
+  --color-sand: #faf7f2;
+  --color-line: #e7e2d9;
+  --color-sun: #f59e0b;
+  --color-coral: #e4572e;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius-card: 14px;
+  --shadow-soft: 0 1px 2px rgb(15 36 48 / 0.04), 0 4px 16px rgb(15 36 48 / 0.06);
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--color-sand); color: var(--color-ink); }
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 bg-sea-600 text-white hover:bg-sea-700; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 border border-line bg-white text-ink hover:border-sea-500; }
+  .btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 border border-coral/40 bg-white text-coral hover:bg-coral/5; }
+  .btn-wa { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 bg-[#25D366] text-white hover:brightness-95; }
+  .card { @apply rounded-[var(--radius-card)] border border-line bg-white shadow-[var(--shadow-soft)]; }
+  .input {
+    @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition
+      placeholder:text-ink-soft/60 focus:border-sea-500 focus:ring-2 focus:ring-sea-100;
+  }
+  .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-soft; }
+  .chip { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold; }
+  .muted { @apply text-sm text-ink-soft; }
+  .page { @apply mx-auto w-full max-w-6xl px-4 py-8 sm:px-6; }
+  .h1 { @apply text-2xl font-bold tracking-tight sm:text-3xl; }
+  .h2 { @apply text-lg font-bold tracking-tight; }
+  .notice { @apply rounded-xl border px-4 py-3 text-sm; }
+}
