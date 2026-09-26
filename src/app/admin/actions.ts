@@ -60,7 +60,13 @@ export async function reviewPayment(form: FormData) {
   if (!p || p.status !== 'submitted') to('error', 'That payment is no longer waiting.');
   if (!approve) {
     if (!n) to('error', 'Say why the payment was not accepted.');
-    await admin.from('payments').update({ status: 'rejected', review_note: n, reviewed_by: me.id, reviewed_at: new Date().toISOString() }).eq('id', id).eq('status', 'submitted');
+    const { data: rej } = await admin
+      .from('payments')
+      .update({ status: 'rejected', review_note: n, reviewed_by: me.id, reviewed_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('status', 'submitted')
+      .select('id');
+    if (!rej?.length) to('error', 'That payment is no longer waiting.');
     revalidatePath('/admin');
     to('ok', 'Payment rejected — the guest can upload a new receipt.');
   }
@@ -69,8 +75,14 @@ export async function reviewPayment(form: FormData) {
   if (b.total_cents !== p.amount_cents) to('error', 'Payment amount doesn’t match the trip total.');
   const { data: upd, error } = await admin.from('bookings').update({ status: 'paid' }).eq('id', b.id).eq('status', 'approved').select('id');
   if (error || !upd?.length) to('error', 'Could not confirm the trip — refresh and try again.');
-  await admin.from('payments').update({ status: 'confirmed', review_note: n || null, reviewed_by: me.id, reviewed_at: new Date().toISOString() }).eq('id', id);
+  const { data: conf } = await admin
+    .from('payments')
+    .update({ status: 'confirmed', review_note: n || null, reviewed_by: me.id, reviewed_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('status', 'submitted')
+    .select('id');
   revalidatePath('/admin');
+  if (!conf?.length) to('error', 'The trip is marked paid, but the payment record changed meanwhile — check it in the audit log.');
   to('ok', 'Payment confirmed — the trip is booked.');
 }
 

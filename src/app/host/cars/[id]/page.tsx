@@ -112,6 +112,9 @@ export default async function EditCarPage({ params, searchParams }: { params: Pr
 
       <div>
         <h2 className="h2 mb-3">Details &amp; price</h2>
+        {car.status === 'listed' || car.status === 'paused' ? (
+          <p className="muted -mt-1 mb-3">Price, fees and trip length update straight away. Changing the car itself, its area, description or photos sends it back to review first.</p>
+        ) : null}
         <CarForm action={updateCar} areas={areas} car={car} submitText="Save changes" />
       </div>
     </div>

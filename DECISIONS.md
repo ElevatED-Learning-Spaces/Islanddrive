@@ -11,7 +11,7 @@
 7. **Driver's permit verified by an admin before a guest's first booking.** Hosts see the guest's verification status when deciding on a request.
 8. **Trips are whole days** (pickup date → return date), with no hourly pricing. Pickup and return times are agreed on WhatsApp.
 9. **Host payouts are recorded by an admin** after completion (one per trip, amount taken from the booking). There's no automatic bank payout.
-10. **Listings are reviewed once.** After approval, a host can edit details and price without re-review. Existing bookings keep their frozen price.
+10. **Listings are re-reviewed when what guests see changes.** Editing make, model, year, gearbox, seats, fuel, area, description or adding photos sends a live car back to review. Price, fees and trip-length changes go live at once; existing bookings keep their frozen price.
 
 ## Open questions for the owner (before launch)
 

@@ -55,17 +55,19 @@ export async function changeBooking(form: FormData) {
   }
 
   const who = actor === 'host' ? 'host' : actor === 'guest' ? 'guest' : 'IslandDrive';
-  const { error } = await admin
+  const { data: changed, error } = await admin
     .from('bookings')
     .update({
       status: targetStatus(action),
       status_note: action === 'cancel' || action === 'decline' ? (note ? `${who}: ${note}` : `By the ${who}`) : b.status_note,
     })
     .eq('id', id)
-    .eq('status', b.status); // optimistic lock: nobody changed it meanwhile
+    .eq('status', b.status) // optimistic lock: nobody changed it meanwhile
+    .select('id');
   if (error) {
     back(id, 'error', error.code === '23P01' ? 'Another trip was approved for those dates first.' : 'Could not update the trip — refresh and try again.');
   }
+  if (!changed?.length) back(id, 'error', 'This trip changed while you were looking at it — here is the latest.');
   if (action === 'approve') {
     // Other pending requests that now clash can never be approved; decline them.
     await admin
@@ -100,7 +102,9 @@ export async function submitProof(form: FormData) {
     reference,
     proof_path: up.path,
   });
-  if (error) back(id, 'error', 'Could not record your payment — please try again.');
+  if (error) {
+    back(id, 'error', error.code === '23505' ? 'We already have your payment proof and are checking it.' : 'Could not record your payment — please try again.');
+  }
   revalidatePath(`/bookings/${id}`);
   back(id, 'ok', 'Thanks! We’ll confirm your payment shortly.');
 }

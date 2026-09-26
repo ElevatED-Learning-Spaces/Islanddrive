@@ -73,4 +73,4 @@ npm run lint && npm run typecheck && npm test && npm run build
 npm run test:db      # applies the migrations to a throwaway local Postgres and runs supabase/tests/*.test.sql
 ```
 
-`test:db` covers: double-booking rejection, back-to-back trips, host blocks, frozen prices and invalid status moves, a host being unable to list their own car, members being unable to become admin or approve their own permit, direct booking inserts being blocked, what anonymous visitors and strangers can see, audit-log immutability, and expiry.
+`test:db` covers: double-booking rejection, receipts under review never expiring, only one open receipt per trip, a live car going back to review when its details change, guests still seeing a car they booked, back-to-back trips, host blocks, frozen prices and invalid status moves, a host being unable to list their own car, members being unable to become admin or approve their own permit, direct booking inserts being blocked, what anonymous visitors and strangers can see, audit-log immutability, and expiry.

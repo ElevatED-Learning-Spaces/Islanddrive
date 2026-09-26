@@ -225,3 +225,54 @@ select c.id, :guest, :host, current_date - 1, current_date + 1, 2, 35000, 70000,
 do $$ begin
   if public.expire_stale_bookings() <> 1 then raise exception 'FAIL: expiry'; end if;
 end $$;
+
+-- ── review fixes ─────────────────────────────────────────────────────────
+-- A guest with a receipt under review is not expired.
+select pg_temp.as_service();
+with b as (
+  insert into public.bookings (car_id, guest_id, host_id, start_date, end_date, days,
+    daily_rate_cents, rental_cents, total_cents, host_payout_cents)
+  select c.id, :other, :host, current_date + 40, current_date + 42, 2, 35000, 70000, 70000, 70000
+    from public.cars c returning id)
+insert into t_ids select 'e', id from b;
+update public.bookings set status = 'approved' where id = (select id from t_ids where k = 'e');
+insert into public.payments (booking_id, payer_id, method, amount_cents)
+  select id, :other, 'bank_transfer', 70000 from t_ids where k = 'e';
+do $$ begin
+  begin
+    insert into public.payments (booking_id, payer_id, method, amount_cents)
+      select id, '33333333-3333-3333-3333-333333333333', 'bank_transfer', 70000 from t_ids where k = 'e';
+    raise exception 'FAIL: two open payments for one booking';
+  exception when unique_violation then null;
+  end;
+end $$;
+alter table public.bookings disable trigger bookings_guard;
+update public.bookings set start_date = current_date, end_date = current_date + 2 where id = (select id from t_ids where k = 'e');
+alter table public.bookings enable trigger bookings_guard;
+do $$ begin
+  perform public.expire_stale_bookings();
+  if (select status from public.bookings where id = (select id from t_ids where k = 'e')) <> 'approved' then
+    raise exception 'FAIL: booking with a receipt under review was expired';
+  end if;
+end $$;
+
+-- Editing a listed car's description sends it back to review; price does not.
+select pg_temp.as_user(:host);
+update public.cars set daily_rate_cents = 36000;
+do $$ begin
+  if (select status from public.cars limit 1) <> 'listed' then raise exception 'FAIL: price change forced review'; end if;
+end $$;
+update public.cars set model = 'Hilux';
+do $$ begin
+  if (select status from public.cars limit 1) <> 'pending_review' then raise exception 'FAIL: car swap went live'; end if;
+end $$;
+
+-- The guest still sees the car they booked while it is not listed.
+select pg_temp.as_user(:guest);
+do $$ begin
+  if (select count(*) from public.cars) <> 1 then raise exception 'FAIL: guest lost sight of booked car'; end if;
+end $$;
+select pg_temp.as_user('55555555-5555-5555-5555-555555555555');
+do $$ begin
+  if exists (select 1 from public.cars) then raise exception 'FAIL: stranger sees unlisted car'; end if;
+end $$;

@@ -88,10 +88,14 @@ export async function updateCar(form: FormData) {
   const r = readCar(form);
   if (!r.ok) to(path, 'error', r.error);
   const supabase = await createClient();
-  const { data, error } = await supabase.from('cars').update(r.car).eq('id', id).eq('host_id', me.id).select('id');
+  const { data: before } = await supabase.from('cars').select('status').eq('id', id).eq('host_id', me.id).maybeSingle();
+  const { data, error } = await supabase.from('cars').update(r.car).eq('id', id).eq('host_id', me.id).select('status');
   if (error || !data?.length) to(path, 'error', 'Could not save changes.');
   revalidatePath(path);
-  to(path, 'ok', 'Changes saved.');
+  revalidatePath('/host');
+  // The cars_guard trigger sends a live car back to review when what guests see changes.
+  const reReview = before?.status !== 'pending_review' && data[0].status === 'pending_review';
+  to(path, 'ok', reReview ? 'Changes saved. Your car is back in review and hidden from search until we approve the changes.' : 'Changes saved.');
 }
 
 export async function setCarStatus(form: FormData) {
@@ -129,15 +133,15 @@ async function ownCar(id: string) {
   const me = await getMe();
   if (!me) redirect(`/login?next=/host/cars/${id}`);
   const supabase = await createClient();
-  const { data } = await supabase.from('cars').select('id').eq('id', id).eq('host_id', me.id).maybeSingle();
+  const { data } = await supabase.from('cars').select('id, status').eq('id', id).eq('host_id', me.id).maybeSingle();
   if (!data) redirect('/host');
-  return me;
+  return { me, status: data.status as string };
 }
 
 export async function uploadPhotos(form: FormData) {
   const id = String(form.get('car_id') ?? '');
   const path = `/host/cars/${id}`;
-  await ownCar(id);
+  const { status } = await ownCar(id);
   const files = form.getAll('photos').filter((f): f is File => f instanceof File && f.size > 0);
   if (!files.length) to(path, 'error', 'Choose at least one photo.');
   const admin = createAdminClient();
@@ -152,8 +156,12 @@ export async function uploadPhotos(form: FormData) {
     if (error) to(path, 'error', 'Upload failed — please try again.');
     await admin.from('car_photos').insert({ car_id: id, path: up.path, position: pos++ });
   }
+  // New photos on a live car are reviewed before guests see them again.
+  const reReview = status === 'listed' || status === 'paused';
+  if (reReview) await admin.from('cars').update({ status: 'pending_review' }).eq('id', id).in('status', ['listed', 'paused']);
   revalidatePath(path);
-  to(path, 'ok', `${files.length} photo${files.length === 1 ? '' : 's'} added.`);
+  revalidatePath('/host');
+  to(path, 'ok', `${files.length} photo${files.length === 1 ? '' : 's'} added.${reReview ? ' Your car is back in review until we check them.' : ''}`);
 }
 
 export async function deletePhoto(form: FormData) {

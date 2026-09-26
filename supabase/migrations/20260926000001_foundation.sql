@@ -137,6 +137,14 @@ begin
   if new.review_note is distinct from old.review_note then
     raise exception 'review note is set by admins';
   end if;
+  -- Changing what guests see about a live car sends it back to review, so an
+  -- approved listing can't be swapped for a different car.
+  if old.status in ('listed', 'paused')
+     and (new.make, new.model, new.year, new.transmission, new.seats, new.fuel, new.area, new.description)
+         is distinct from
+         (old.make, old.model, old.year, old.transmission, old.seats, old.fuel, old.area, old.description) then
+    new.status := 'pending_review';
+  end if;
   return new;
 end $$;
 create trigger cars_guard before update on public.cars
@@ -302,6 +310,10 @@ create policy bookings_party_read on public.bookings for select to authenticated
   using (guest_id = auth.uid() or host_id = auth.uid() or public.is_admin());
 grant select on public.bookings to authenticated;
 
+-- A guest keeps seeing the car they booked even if it is later paused or delisted.
+create policy cars_guest_read on public.cars for select to authenticated
+  using (exists (select 1 from public.bookings b where b.car_id = cars.id and b.guest_id = auth.uid()));
+
 -- ── payments (bank-transfer proof now; WiPay later) ─────────────────────
 create table public.payments (
   id            uuid primary key default gen_random_uuid(),
@@ -319,6 +331,7 @@ create table public.payments (
 );
 create index payments_booking_idx on public.payments (booking_id);
 create unique index payments_one_confirmed on public.payments (booking_id) where status = 'confirmed';
+create unique index payments_one_open on public.payments (booking_id) where status = 'submitted';
 alter table public.payments enable row level security;
 create policy payments_party_read on public.payments for select to authenticated
   using (payer_id = auth.uid() or public.is_admin());
@@ -425,7 +438,10 @@ begin
   update public.bookings set status = 'expired',
          status_note = 'Expired: not confirmed before the pickup date'
    where status in ('requested', 'approved')
-     and start_date <= (now() at time zone 'America/Port_of_Spain')::date;
+     and start_date <= (now() at time zone 'America/Port_of_Spain')::date
+     -- a guest who has sent a receipt is never expired while it is checked
+     and not exists (select 1 from public.payments p
+                      where p.booking_id = bookings.id and p.status = 'submitted');
   get diagnostics n = row_count;
   return n;
 end $$;

@@ -2,13 +2,11 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getMe } from '@/lib/auth';
 import { supabaseConfigured } from '@/lib/env';
+import { safeNext } from '@/lib/safe-next';
 import { LoginForm } from './LoginForm';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
-function safeNext(n: string | undefined): string {
-  return n && n.startsWith('/') && !n.startsWith('//') ? n : '/';
-}
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
   const sp = await searchParams;
